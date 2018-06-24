@@ -1,4 +1,4 @@
-# EVOLUTION SIMULATION
+# EVOLUTION SIMULATOR
 Designed and programmed by Max Robinson  
 
 ## What is this?
@@ -34,4 +34,4 @@ repo and opening the file, or by going [here](https://students.cs.byu.edu/~maxim
 ## Notes:
 This program was written with very little knowledge of programming techniques or javascript. Hence, it is very
 poor code quality. It was uploaded simply for preservation. However, the concept is executed with relatively good efficiency 
-and, if allowed to run on its own, can produce incredible results. All ideas and code were produced by me Max Robinson alone.
+and, if allowed to run on its own, can produce incredible results. All ideas and code were produced by Max Robinson alone.
