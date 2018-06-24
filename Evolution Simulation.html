@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charste="UTF-8">
+	<title>Evolution</title>
+	<style type='text/css'>
+		canvas { border: 1px solid black;}
+	</style>
+</head>
+<body>
+		<canvas id='canvas'></canvas>
+		<script type='text/javascript'>
+		
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Interval Control\\\\
+		
+		"use strict";
+		
+		var ctx;
+		var curInterval, curIntervalName = "none";
+		var FPS;
+		
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+		
+		var CanvasH = canvas.height;
+		var CanvasW = canvas.width;
+		var FIRSTFRAME = true;
+		
+		var KEY_UP = 38;
+		var KEY_DOWN = 40;
+		var KEY_SPACE = 32;
+		var Up_Pressed = false;
+		var Down_Pressed = false;
+		var Space_Pressed = false;
+		
+		
+		var grid = [];
+		var Cell_Side_Size = 3;
+		var NUM_OF_ROWS = Math.floor(CanvasH / Cell_Side_Size);
+		var NUM_OF_COLUMNS = Math.floor(CanvasW / Cell_Side_Size);
+		
+		
+		var organism = [];
+		var CommonLifeSpan = 300;
+		var BirthDistance = 7;
+		
+		//DIRECTION ENUM
+		var up = 0;
+		var down = 1;
+		var left = 2;
+		var right = 3;
+		//^^^^
+		
+		//CELL TYPES ENUM
+		var mouth = 0;
+		var producer = 1;
+		var mover = 2;
+		var killer = 3;
+		var armour = 4;
+		var food = 5;
+		var empty = 6;
+		var AllCellTypes_length = 5;
+		var start_cell = empty;
+		//^^^^
+		var chanceOfMutation = 1;
+		var chanceOfGrowingCell = 40;
+		var chanceOfLosingACell = 20;
+		var chanceOfGettingNewCellType = 50;
+		
+		
+		var GridChanges = [];
+		var OrganismsToKill = [];
+		
+		var MassExtinctions = 0;
+		var largestNumOfOrganisms = 0;
+		
+		var count = 0;
+		
+		//Begin the simulation
+		main();
+		
+		function main(){
+			console.log("Maximum Rows: " + NUM_OF_ROWS + "    Maximum Columns: " + NUM_OF_COLUMNS);
+			ctx = document.getElementById('canvas').getContext("2d");
+			document.addEventListener('keydown', handleKeyDown);
+			document.addEventListener('keyup', handleKeyUp);
+			SetGrid();
+			OriginOfLife();
+			
+			//console.log(NUM_OF_ROWS+" rows,  "+NUM_OF_COLUMNS+" columns");
+			
+			SetInterval("Regular");
+		}
+		
+		
+		//changes the current interval to newInterval
+		function SetInterval(newInterval){
+			FIRSTFRAME = true;
+			if(newInterval != "none")
+				clearInterval(curInterval);
+				
+			if(newInterval == "Regular"){		//runs the simulation and prints it out at 60 fps
+				FPS = 40;
+				drawFullGrid();
+				curInterval = setInterval(function(){Update(); Draw(ctx);}, 1000/FPS);
+			}
+			else if(newInterval == "Fast"){		//runs the simulation and prints a very simple output at the fastest possible rate
+				FPS = 1000;FIRSTFRAME = true;
+				//drawFullGrid();
+				curInterval = setInterval(function(){Update(); DrawFast(ctx);}, 1000/FPS);
+			}
+			else if(newInterval == "Pause"){	//prints full game but only updates to look for user input
+				drawFullGrid();
+				curInterval = setInterval(function(){LookForIntervalChange(); Draw(ctx); drawControlPanel(ctx);}, 1000/FPS);
+			}
+			curIntervalName = newInterval;
+		}
+		
+		
+		//Checks for pressed keys and changes the interval accordingly
+		function LookForIntervalChange(){
+		
+			//go fast if 'up' is pressed
+			if(Up_Pressed && curIntervalName != "Fast"){
+				FIRSTFRAME = true;
+				SetInterval("Fast");
+			}
+				
+			//go regular speed if 'down' is pressed
+			else if(Down_Pressed && curIntervalName != "Regular"){
+				FIRSTFRAME = true;
+				SetInterval("Regular");
+			}
+			
+			//pause if 'space' is pressed
+			if(Space_Pressed && curIntervalName != "Pause"){
+				FIRSTFRAME = true;
+				SetInterval("Pause");	
+			}
+			
+			//if its already paused and 'space' is pressed, go regular speed
+			else if(Space_Pressed && curIntervalName == "Pause"){
+				FIRSTFRAME = true;
+				SetInterval("Regular");
+			}
+				
+			//reset all the key-pressed variables to false
+			Space_Pressed = false;
+			Down_Pressed = false;
+			Up_Pressed = false;
+		}
+		
+		
+		//handles user input
+		function handleKeyDown(evt) {
+			if ( evt.keyCode == KEY_UP && !Up_Pressed )
+				Up_Pressed = true;
+			if( evt.keyCode == KEY_DOWN && !Down_Pressed )
+				Down_Pressed = true;
+			if( evt.keyCode == KEY_SPACE && !Space_Pressed )	
+				Space_Pressed = true;
+				
+			if ( 32 <= evt.keyCode && evt.keyCode <= 40 )
+				evt.preventDefault();
+		}
+		function handleKeyUp(evt){
+			if ( evt.keyCode == KEY_UP )
+				Up_Pressed = false;
+			if( evt.keyCode == KEY_DOWN )
+				Down_Pressed = false;
+			if( evt.keyCode == KEY_SPACE )	
+				Space_Pressed = false;
+			
+			if(32<=evt.keycode && evt.keyCode <= 40)
+				evt.preventDefault();
+		}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Interval Control////
+				
+		
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Grid Declaration\\\\
+		function SetGrid(){
+			var cur_x = 0;
+			var cur_y = 0;
+			for(var i=0; i<NUM_OF_ROWS; i++){
+				var Row = [];
+				cur_x = 0;
+				for(var j=0; j<NUM_OF_COLUMNS; j++){
+					var cell = {};
+					cell.x = cur_x;
+					cell.y = cur_y;
+					cell.size = Cell_Side_Size;
+					cell.type = empty;
+					Row.push(cell);
+					cur_x+=Cell_Side_Size;
+				}
+				cur_y+=Cell_Side_Size;
+				grid.push(Row);
+			}
+		}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Grid Declaration////
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Origin of Life\\\\
+		function OriginOfLife(){
+			clearGrid();
+			drawFullGrid();
+			
+			
+			//one big honker with a little dude friend 
+			/* 
+			var Bp_r = Math.floor(NUM_OF_ROWS/2);
+			var Bp_c = Math.floor(NUM_OF_COLUMNS/2);
+			
+			var c = {food:0};
+			c.cell_r =    [Bp_r , Bp_r+1  , Bp_r+2, Bp_r+3  , Bp_r+4, Bp_r+5  , Bp_r+6];
+			c.cell_c =    [Bp_c , Bp_c+1  , Bp_c  , Bp_c+1  , Bp_c  , Bp_c+1  , Bp_c  ];
+			c.cell_type = [mouth, producer, mouth , producer, mouth , producer, mouth ];
+			c.LifeSpan = 0;
+			c.foodGathered = 0;
+			c.hitpoints = c.cell_c.length;
+			c.direction = 0;
+			c.move_count = 0;
+			c.move_max = 0;
+			
+			organism.push(c);
+			
+			var c = {food:0};
+			c.cell_r =    [Bp_r , Bp_r+1];
+			c.cell_c =    [Bp_c , Bp_c+1];
+			c.cell_type = [mouth, mover ];
+			c.LifeSpan = 0;
+			c.foodGathered = 0;
+			c.hitpoints = c.cell_c.length;
+			c.direction = 0;
+			c.move_count = 0;
+			c.move_max = 0;
+			
+			organism.push(c);
+			//*/
+			
+			
+			/////////two distant movers in a world of food
+			/*
+			start_cell = food;
+			clearGrid();
+			var Birthplace_r = Math.floor(NUM_OF_ROWS-100);
+			var Birthplace_c = Math.floor(NUM_OF_COLUMNS-100);
+			
+			var characteristics = {food:0};
+			characteristics.cell_r = [Birthplace_r, Birthplace_r+1];
+			characteristics.cell_c = [Birthplace_c, Birthplace_c+1];
+			characteristics.cell_type = [mover, mouth];
+			characteristics.LifeSpan = 0;
+			characteristics.foodGathered = 0;
+			characteristics.hitpoints = characteristics.cell_c.length;
+			characteristics.direction = 0;
+			characteristics.move_count = 0;
+			characteristics.move_max = 0;
+			
+			organism.push(characteristics);
+			grid[organism[0].cell_r[0]][organism[0].cell_c[0]].type = organism[0].cell_type[0];
+			grid[organism[0].cell_r[1]][organism[0].cell_c[1]].type = organism[0].cell_type[1];
+			Birthplace_r = Math.floor(100);
+			Birthplace_c = Math.floor(100);
+			
+			characteristics = {food:0};
+			characteristics.cell_r = [Birthplace_r, Birthplace_r+1];
+			characteristics.cell_c = [Birthplace_c, Birthplace_c+1];
+			characteristics.cell_type = [mouth, mover];
+			characteristics.LifeSpan = 0;
+			characteristics.foodGathered = 0;
+			characteristics.hitpoints = characteristics.cell_c.length;
+			characteristics.direction = 0;
+			characteristics.move_count = 0;
+			characteristics.move_max = 0;
+			organism.push(characteristics);
+			
+			grid[organism[1].cell_r[0]][organism[1].cell_c[0]].type = organism[1].cell_type[0];
+			grid[organism[1].cell_r[1]][organism[1].cell_c[1]].type = organism[1].cell_type[1];
+			
+			//*/
+			
+			
+			
+			//one little plant man
+			//*
+			var Bp_r = Math.floor(NUM_OF_ROWS/2);
+			var Bp_c = Math.floor(NUM_OF_COLUMNS/2);
+			
+			var c = {food:0};
+			c.cell_r =    [Bp_r , Bp_r+1, Bp_r];
+			c.cell_c =    [Bp_c , Bp_c+1, Bp_c+2];
+			c.cell_type = [mouth, producer, mouth];
+			c.LifeSpan = 0;
+			c.foodGathered = 0;
+			c.hitpoints = c.cell_c.length;
+			c.direction = 0;
+			c.move_count = 0;
+			c.move_max = 0;
+			
+			organism.push(c);
+			//*/
+			
+			//one mover in foodland
+			/*
+			start_cell = food;
+			clearGrid();
+			var Bp_r = Math.floor(NUM_OF_ROWS/2);
+			var Bp_c = Math.floor(NUM_OF_COLUMNS/2);
+			
+			var c = {food:0};
+			c.cell_r =    [Bp_r , Bp_r+1];
+			c.cell_c =    [Bp_c , Bp_c+1];
+			c.cell_type = [mouth, mover];
+			c.LifeSpan = 0;
+			c.foodGathered = 0;
+			c.hitpoints = c.cell_c.length;
+			c.direction = 0;
+			c.move_count = 0;
+			c.move_max = 0;
+			
+			organism.push(c);
+			//*/
+			
+		}
+		
+		function clearGrid(){
+			for(var r=0; r<NUM_OF_ROWS; r++){
+				for(var c=0; c<NUM_OF_COLUMNS; c++){
+					grid[r][c].type = start_cell;
+				}
+			}
+		}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Origin of Life////
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Birth & mutation\\\\
+		function giveBirth(oldOrg){
+			var newOrg  = {};
+			newOrg.LifeSpan = 0;
+			newOrg.foodGathered = 0;
+			newOrg.cell_r = [];
+			newOrg.cell_c = [];
+			newOrg.cell_type = [];
+			newOrg.direction = 0 + Math.floor(Math.random()*4);
+			newOrg.move_count = 0;
+			newOrg.move_max = oldOrg.move_max;
+			newOrg.hitpoints = oldOrg.hitpoints;
+			if(0 + Math.floor(Math.random()*100) <= 20){
+				newOrg.move_max = oldOrg.move_max + (-1 + Math.floor(Math.random()*3));
+				//if(newOrg.move_max > 20) newOrg.move_max = 20;
+				if(newOrg.move_max < 0) newOrg.move_max = 0;
+			}
+			//if(newOrg.move_max > 1)console.log(newOrg.move_max);
+			
+			BirthDistance = oldOrg.cell_r.length + 3;
+			
+			//console.log(oldOrg.cell_r);
+			
+			var random = 1 + Math.floor(Math.random()*4);
+			//var eachCellMutateChance = chanceOfMutation/oldOrg.cell_r.length;
+			var EACHCELLchanceOfGrowingCell = chanceOfGrowingCell/oldOrg.cell_r.length;
+			var EACHCELLchanceOfLosingACell = chanceOfLosingACell/oldOrg.cell_r.length;
+			var cellToRemove = -1;
+			var alreadyMutated = false;
+			
+			var newCellToAdd = {};
+			var hasAddedNewCell = false;
+			
+			var ReproductionFailed = false;
+			for(var i=0; i<oldOrg.cell_type.length; i++){
+				
+				var countSinceFailure = 0;
+				
+				var oldR = oldOrg.cell_r[i];
+				var oldC = oldOrg.cell_c[i];
+				
+				var bdC = 0;
+				var bdR = 0;
+				
+				
+				//Grow down
+				if(random == 1){
+					//console.log(oldR+", "+oldC + BirthDistance);
+					//console.log(" = "+grid[oldR][oldC + BirthDistance].type);
+					if(oldC+BirthDistance<NUM_OF_COLUMNS && empty == (grid[oldR][oldC + BirthDistance].type)){
+						newOrg.cell_r.push(oldR);
+						newOrg.cell_c.push(oldC + BirthDistance);
+						bdC = BirthDistance;
+					}
+					else
+						ReproductionFailed = true;
+				}
+				
+				//Grow up
+				if(random == 2){
+					//console.log(oldR+", "+oldC - BirthDistance);
+					//console.log(" = "+grid[oldR][oldC - BirthDistance].type);
+					if(oldC-BirthDistance>=0 && empty == (grid[oldR][oldC - BirthDistance].type)){
+						newOrg.cell_r.push(oldR);
+						newOrg.cell_c.push(oldC - BirthDistance);
+						bdC = -BirthDistance;
+					}
+					else
+						ReproductionFailed = true;
+				}
+				
+				//Grow right
+				if(random == 3){
+					//console.log(oldR+ BirthDistance+", "+oldC );
+					//console.log(" = "+grid[oldR + BirthDistance][oldC].type);
+					if(oldR+BirthDistance<NUM_OF_ROWS && empty == (grid[oldR + BirthDistance][oldC].type)){
+						newOrg.cell_r.push(oldR + BirthDistance);
+						newOrg.cell_c.push(oldC);
+						bdR = BirthDistance;
+					}
+					else
+						ReproductionFailed = true;
+				}
+				
+				//Grow left
+				if(random == 4){
+					//console.log(oldR - BirthDistance+", "+oldC);
+					//console.log(" = "+grid[oldR - BirthDistance][oldC].type);
+					if(oldR-BirthDistance>=0 && empty == grid[oldR - BirthDistance][oldC].type){
+						newOrg.cell_r.push(oldR - BirthDistance);
+						newOrg.cell_c.push(oldC);
+						bdR = -BirthDistance;
+					}
+					else
+						ReproductionFailed = true;
+				}
+				
+				newOrg.cell_type.push(oldOrg.cell_type[i]);
+				
+				
+				
+				
+				
+				//CAUSE MUTATION
+				if(1 + Math.floor(Math.random()*100) <= chanceOfMutation && !alreadyMutated){
+					
+					
+					//Grow a new cell
+					if(1 + Math.floor(Math.random()*100) <= EACHCELLchanceOfGrowingCell){
+						var randR = -1 + Math.floor(Math.random()*3);
+						var randC = -1 + Math.floor(Math.random()*3);
+						
+						if(!isThatCellAlreadyOccupied(oldOrg, bdR, bdC, oldR + randR, oldC + randC)){
+							//console.log(randR + ", " + randC);
+							var newType = 0 + Math.floor(Math.random()*AllCellTypes_length);
+							newCellToAdd.type = newType;
+							newCellToAdd.r = oldR + randR + bdR;
+							newCellToAdd.c = oldC + randC + bdC;
+							
+							hasAddedNewCell = true;
+							//console.log(hasAddedNewCell);
+						}
+						//console.log("created");
+						
+					}
+					
+					else if(1 + Math.floor(Math.random()*100) <= EACHCELLchanceOfLosingACell){
+						cellToRemove = i
+					}
+					
+					//Change the current cell type
+					else{
+						newOrg.cell_type[i] =  0 + Math.floor(Math.random()*AllCellTypes_length);
+						//console.log("changed");
+					}
+					
+					
+					alreadyMutated = true;	
+				}
+				//var R = newOrg.cell_r[i];
+				//var C = newOrg.cell_c[i];
+				
+				
+				
+				
+				
+				
+				//console.log("Reproducing: "+!ReproductionFailed);
+			}
+			
+			//If it has already made a new cell then push it into the organism AFTER the rest have been added
+			
+			if(!ReproductionFailed){
+				for(var i=0; i<newOrg.cell_type.length; i++){
+					GridChanges.push({r:newOrg.cell_r[i], c:newOrg.cell_c[i], type:newOrg.cell_type[i]});
+					grid[newOrg.cell_r[i]][newOrg.cell_c[i]].type = newOrg.cell_type[i];
+				}
+				//console.log(hasAddedNewCell);
+				if(hasAddedNewCell){
+					//console.log("added");
+					newOrg.cell_type.push(newCellToAdd.type);
+					newOrg.cell_r.push(newCellToAdd.r);
+					newOrg.cell_c.push(newCellToAdd.c);
+					GridChanges.push({r:newCellToAdd.r, c:newCellToAdd.c, type:newCellToAdd.type});
+					grid[newCellToAdd.r][newCellToAdd.c].type = newCellToAdd.type;
+				}
+				else if(cellToRemove != -1 && newOrg.cell_r.length > 1){
+					GridChanges.push({r:newOrg.cell_r[cellToRemove], c:newOrg.cell_c[cellToRemove], type:empty});
+					grid[newOrg.cell_r[cellToRemove]][newOrg.cell_c[cellToRemove]].type = empty;
+					newOrg.cell_type.splice(cellToRemove, 1);
+					newOrg.cell_r.splice(cellToRemove, 1);
+					newOrg.cell_c.splice(cellToRemove, 1);
+				}
+				//newOrg.hitpoints = newOrg.cell_c.length;
+				organism.push(newOrg);
+			}
+		}
+		
+		
+		function isThatCellAlreadyOccupied(o, bdR, bdC, r, c)
+		{	
+			if(!exists(r+bdR, c+bdC))
+				return true;			
+			if(empty != grid[r+bdR][c+bdC].type)
+				return true;
+		
+			for(var i=0; i<o.cell_r.length; i++){
+				if(o.cell_r[i] == r && o.cell_c[i] == c)
+					return true;
+				if(c >= NUM_OF_COLUMNS || r >= NUM_OF_ROWS || c < 0 || r < 0)
+					return true;
+			}
+			return false;
+		}
+		
+		function exists(r, c){
+			return (r>=0 && c>=0 && r < NUM_OF_ROWS && c < NUM_OF_COLUMNS);
+		}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Birth & mutation////
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Child Update Functions\\\\
+		function updateGrid(){
+			for(var i=0; i<GridChanges.length; i++)
+				grid[GridChanges[i].r][GridChanges[i].c].type = GridChanges[i].type;
+			GridChanges.splice(0, GridChanges.length);
+		}
+		function updateOrganisms(){
+			
+			for(var i = 0; i<organism.length; i++){
+				var beenKilled = false;
+				var o = organism[i];
+				var needToMoveOrganism = false;
+				//console.log(organism.length);
+				for(var j=0; j<o.cell_r.length; j++){
+					if(!beenKilled)
+					{
+						var or = o.cell_r[j];
+						var oc = o.cell_c[j];
+						var otype = o.cell_type[j];
+						
+						//EAT NEARBY FOOD
+						if(otype == mouth){
+							//if(grid[or][oc].type == "food"){
+								//GridChanges.push({r:or, c:oc, type:"empty"});
+								//organism[i].foodGathered++;
+							//}
+							if(or+1<NUM_OF_ROWS && grid[or+1][oc].type == food){
+								GridChanges.push({r:or+1, c:oc, type:empty});
+								organism[i].foodGathered++;
+							}
+							/*if(oc+1<NUM_OF_COLUMNS && or+1<NUM_OF_ROWS && grid[or+1][oc+1].type == food){
+								GridChanges.push({r:or+1, c:oc+1, type:empty});
+								organism[i].foodGathered++;
+							}*/
+							if(oc+1<NUM_OF_COLUMNS && grid[or][oc+1].type == food){
+								GridChanges.push({r:or, c:oc+1, type:empty});
+								organism[i].foodGathered++;
+							}
+							if(or-1>=0 && grid[or-1][oc].type == food){
+								GridChanges.push({r:or-1, c:oc, type:empty});
+								organism[i].foodGathered++;
+							}
+							/*if(or-1>=0 && oc-1>=0 && grid[or-1][oc-1].type == food){
+								GridChanges.push({r:or-1, c:oc-1, type:empty});
+								organism[i].foodGathered++;
+							}*/
+							if(oc-1>=0 && grid[or][oc-1].type == food){
+								GridChanges.push({r:or, c:oc-1, type:empty});
+								organism[i].foodGathered++;
+							}
+						}
+						
+						
+						//GROW FOOD
+						if(otype == producer && 1 + Math.floor(Math.random()*20) == 1  && !needToMoveOrganism && !typeIsFound(mover, o)){
+							var random = 1+ Math.floor(Math.random()*4);
+							if(random == 1 && oc+1<NUM_OF_COLUMNS && grid[or][oc+1].type == empty){
+								GridChanges.push({r:or, c:oc+1, type:food});
+								grid[or][oc+1].type = food;
+							}
+							else if(random == 2 && or+1<NUM_OF_ROWS && grid[or+1][oc].type == empty){
+								GridChanges.push({r:or+1, c:oc, type:food});
+								grid[or+1][oc].type = food;
+							}
+							else if(random == 3 && or-1>=0 && grid[or-1][oc].type == empty){
+								GridChanges.push({r:or-1, c:oc, type:food});
+								grid[or-1][oc].type = food;
+							}
+							else if(random == 4 && oc-1>=0 && grid[or][oc-1].type == empty){
+								GridChanges.push({r:or, c:oc-1, type:food});
+								grid[or][oc-1].type = food;
+							}
+						}
+						
+						
+						//MOVE
+						if(otype == mover)
+							needToMoveOrganism = true;
+						
+						
+						//CHECK FOR KILLERS IF THE CURRENT TYPE ISNT ARMOUR
+						//*
+						if(otype != armour){
+							if(oc-1 >= 0 && grid[or][oc-1].type == killer && !isInOrganism(o, or, oc-1)){
+								organism[i].hitpoints=0;
+							}
+							else if(oc+1 < NUM_OF_COLUMNS && grid[or][oc+1].type == killer && !isInOrganism(o, or, oc+1)){
+								organism[i].hitpoints=0;
+							}
+							else if(or-1 >= 0 && grid[or-1][oc].type == killer && !isInOrganism(o, or-1, oc)){
+								organism[i].hitpoints=0;
+							}
+							else if(or+1 < NUM_OF_ROWS && grid[or+1][oc].type == killer && !isInOrganism(o, or+1, oc)){
+								organism[i].hitpoints=0;
+							}
+						}
+						//*/
+						if(o.hitpoints <= 0){
+							killOrganism(i);
+							beenKilled = true;
+						}
+					}
+				}
+				
+				//HAS THE ORGANISM BEEN KILLED? IF NOT, UPDATE THE FOLLOWING:
+				if(!beenKilled){
+				
+					// DID THE ORGANISM HAVE A BLUE CELL? IF SO, MOVE:
+					if(needToMoveOrganism){
+						organism[i].move_count++;
+						if(organism[i].direction == up){
+						//console.log(willRunIntoSomething(o, -1, 0));
+							if(!willRunIntoSomething(o, -1, 0)){moveOrgansim(i, -1, 0);}
+							else {organism[i].direction = 0 + Math.floor(Math.random()*4);
+							organism[i].move_count = 0;}
+						}
+						else if(organism[i].direction == down){
+							if(!willRunIntoSomething(o, 1, 0)){moveOrgansim(i, 1, 0);}
+							else {organism[i].direction = 0 + Math.floor(Math.random()*4);
+							organism[i].move_count = 0;}
+						}
+						else if(organism[i].direction == left){
+							if(!willRunIntoSomething(o, 0, -1)){moveOrgansim(i, 0, -1);}
+							else {organism[i].direction = 0 + Math.floor(Math.random()*4);
+							organism[i].move_count = 0;}
+						}
+						else if(organism[i].direction == right){
+							if(!willRunIntoSomething(o, 0, 1)){moveOrgansim(i, 0, 1);}
+							else {organism[i].direction = 0 + Math.floor(Math.random()*4);
+							organism[i].move_count = 0;}
+						}
+						
+						if(organism[i].move_count > organism[i].move_max){
+							organism[i].direction = 0 + Math.floor(Math.random()*4);
+							organism[i].move_count = 0;
+						}
+					}
+					
+					///IF THERE IS ENOUGH FOOD, GIVE BIRTH
+					if(o.foodGathered > o.cell_r.length-1){// && organism.length < 10){
+						//console.log("Organism " + i + " gave birth after eating " + o.foodGathered)
+						organism[i].foodGathered = 0; 
+						giveBirth(o);
+					}
+
+					//CHECK FOR DEATH TIME
+					organism[i].LifeSpan++;
+					if(organism[i].LifeSpan>=(o.cell_r.length) *100){
+						killOrganism(i);
+						beenKilled = true;
+					}
+				}
+				
+			}
+			clearDeadOrganismData();
+			if(organism.length <= 0){
+				OriginOfLife();
+				MassExtinctions++;
+			}
+			if(organism.length > largestNumOfOrganisms){
+				largestNumOfOrganisms = organism.length;
+			}
+		}
+		
+		
+		function killOrganism(i){
+			for(var j=0; j<organism[i].cell_r.length; j++){
+				GridChanges.push({r:organism[i].cell_r[j], c:organism[i].cell_c[j], type:food});
+			}
+			OrganismsToKill.push(i);
+			//console.log(OrganismsToKill);
+		}
+		
+		function clearDeadOrganismData(){
+			for(var i=OrganismsToKill.length-1; i>=0; i--){
+				organism.splice(OrganismsToKill[i], 1);
+			}
+			OrganismsToKill.splice(0, OrganismsToKill.length);
+		}
+		
+		function typeIsFound(lookforType, o){
+			for (var i=0; i<o.cell_c.length; i++){
+				if(o.cell_type[i] == lookforType)
+					return true;
+			}
+			return false;
+		}
+		
+		//CHECKS IF THE GIVEN ORGANISM WILL RUN INTO A NON-EMPTY CELL OR A MAP EDGE
+		function willRunIntoSomething(o, rm, cm){
+			for(var i=0; i<o.cell_r.length; i++){
+				var r = o.cell_r[i];
+				var c = o.cell_c[i];
+				if(c+cm >= NUM_OF_COLUMNS || r+rm >= NUM_OF_ROWS || c+cm < 0 || r+rm < 0)
+					return true;
+				
+				if(empty != grid[r+rm][c+cm].type && !isInOrganism(o, r+rm, c+cm))
+					return true;
+				
+			}
+			return false;
+		}
+		
+		function isInOrganism(o, r, c){
+			for(var i=0; i<o.cell_r.length; i++){
+				var RowToLookAt = o.cell_r[i];
+				var ColToLookAt = o.cell_c[i];
+				
+				if(r==RowToLookAt && c==ColToLookAt){
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		function moveOrgansim(i, rm, cm){
+			for(var j=0; j<organism[i].cell_r.length; j++){
+				GridChanges.push({r:organism[i].cell_r[j], c:organism[i].cell_c[j], type:empty});
+				grid[organism[i].cell_r[j]][organism[i].cell_c[j]].type = empty;
+				//GridChanges.push({r:organism[i].cell_r[j]+rm, c:organism[i].cell_c[j]+cm, type:organism[i].cell_type[j]});
+				grid[organism[i].cell_r[j]+rm][organism[i].cell_c[j]+cm].type = organism[i].cell_type[j];
+				organism[i].cell_r[j]+=rm;
+				organism[i].cell_c[j]+=cm;
+			}
+		}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Child Update Functions////
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Child Draw Functions\\\\
+		function drawFullGrid(){
+			for(var r=0; r<NUM_OF_ROWS; r++)
+				for(var c=0; c<NUM_OF_COLUMNS; c++){
+					drawCell(r, c, grid[r][c].type);
+				}
+			drawGridChanges();
+		}
+		
+		function drawControlPanel(){
+			ctx.fillStyle = "black";
+			ctx.fillRect(0, CanvasH-70, 155, 90);
+			ctx.fillStyle = "white";
+			ctx.fillText("Iteration: " + count, 20, CanvasH-50);
+			ctx.fillText("Speed: " + curIntervalName, 20, CanvasH-40);
+			ctx.fillText("Organisms: " + organism.length, 20, CanvasH-30);
+			ctx.fillText("Organism Record: " + largestNumOfOrganisms, 20, CanvasH-20);
+			ctx.fillText("Mass Extinctions: " + MassExtinctions, 20, CanvasH-10);
+		}
+		
+		function drawGridChanges(){
+			for(var i=0; i<GridChanges.length; i++){
+				grid[GridChanges[i].r][GridChanges[i].c].type = GridChanges[i].type;
+				drawCell(GridChanges[i].r, GridChanges[i].c, GridChanges[i].type);
+			}
+			GridChanges.splice(0, GridChanges.length);//remove all of grid changes
+		}
+		function drawCell(r, c, type){
+			var x = grid[r][c].x;
+			var y = grid[r][c].y;
+			var size = grid[r][c].size;
+			if(grid[r][c].type == empty)
+				ctx.fillStyle = "#121D29";
+			else if(grid[r][c].type == mouth)
+				ctx.fillStyle = "orange";
+			else if(grid[r][c].type == producer)
+				ctx.fillStyle = "pink";
+			else if(grid[r][c].type == food)
+				ctx.fillStyle = "green";
+			else if(grid[r][c].type == mover)
+				ctx.fillStyle = "blue";
+			else if(grid[r][c].type == killer)
+				ctx.fillStyle = "red";
+			else if(grid[r][c].type == armour)
+				ctx.fillStyle = "purple";
+			
+			ctx.fillRect(x, y, size, size);
+		}
+		function drawAllOrganisms(){
+			for(var i=0; i<organism.length; i++){
+				var o = organism[i];
+				
+				for(var j=0; j<o.cell_r.length; j++){
+					var r = o.cell_r[j];
+					var c = o.cell_c[j];
+					var type = o.cell_type[j];
+					grid[r][c].type = type;
+					drawCell(r, c, type);
+				}
+			}
+		}
+		
+		
+		
+		
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Child Draw Functions////
+		
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Regular Speed Interval\\\\
+		function Update(){
+			updateOrganisms();
+			coutUp();
+			LookForIntervalChange();
+		}
+		function Draw(){
+			if(FIRSTFRAME){
+				drawFullGrid();
+				FIRSTFRAME = false;
+			}
+			drawGridChanges();
+			drawAllOrganisms();
+			//drawControlPanel();
+
+			
+		}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Regular Speed Interval////
+
+		
+		
+		function UpdateFast(){
+			updateOrganisms();
+			
+			coutUp();
+			LookForIntervalChange();
+		}
+		function DrawFast(){
+			if(FIRSTFRAME){
+				//ctx.fillStyle = "#121D29";
+				//ctx.fillRect(0, 0, CanvasW, CanvasH);
+				FIRSTFRAME = false;
+			}
+			updateGrid();
+			//drawControlPanel();
+			
+		}
+		function coutUp(){
+			count++;
+		}
+	</script>
+</body>
+</html>
