@@ -10,7 +10,7 @@ repo and opening the file, or by going [here](https://students.cs.byu.edu/~maxim
 
 ## Controls
 - Press ```space``` to pause the simulation and see stats
-- Press ```up``` arrow to speed up the simulation (boundless framerate and no visuals)
+- Press ```up``` arrow to run headlessly (boundless framerate and no visuals)
 - Press ```down``` arrow to go back to normal speed with visuals
 
 ## Rules
@@ -33,5 +33,5 @@ repo and opening the file, or by going [here](https://students.cs.byu.edu/~maxim
 
 ## Notes:
 This program was written with very little knowledge of programming techniques or javascript. Hence, it is very
-poor code quality. It was uploaded simply for preservation. However, the concept is executed with relatively good efficiency 
+poor code quality. It was uploaded to Github simply for preservation. However, the concept is executed with relatively good efficiency 
 and, if allowed to run on its own, can produce incredible results. All ideas and code were produced by Max Robinson alone.
