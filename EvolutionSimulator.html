@@ -68,14 +68,17 @@
 		<h1 id="status-text"><i>Running Headlessly</i></h1>
 
 		<div class = "control-panel">
-			<p>Iterations</p>
-			<p>Organisms</p>
-			<p>Highest Number of Organisms</p>
-			<p>Resets</p>
+			<p id="iters">Iterations</p>
+			<p id="org-count">Organisms</p>
+			<p id="org-record">Highest Number of Organisms</p>
+			<p id="resets">Resets</p>
 			<button onclick="SetInterval('Pause')">Pause</button>
 			<button onclick="SetInterval('Regular')">Play</button>
 			<button onclick="SetInterval('Fast')">Run Headlessly</button>
 			<button onclick="reset()">Reset</button>
+			<br>
+			Mutation Rate: 
+			<input id="chance-mut" type="number" min="0" max="100" step="1" value="1"/>
 		</div>
 		
 		<script type='text/javascript'>
@@ -879,6 +882,7 @@
 			updateOrganisms();
 			coutUp();
 			LookForIntervalChange();
+			UpdateControlPanel();
 		}
 		function Draw(){
 			if(FIRSTFRAME){
@@ -890,6 +894,14 @@
 			//drawControlPanel();
 
 			
+		}
+		function UpdateControlPanel(){
+			document.getElementById("iters").innerHTML = "Iterations: " + count;
+			document.getElementById("org-count").innerHTML = "Organisms: " + organism.length;
+			document.getElementById("org-record").innerHTML = "Organism Record: " + largestNumOfOrganisms;
+			document.getElementById("resets").innerHTML = "Resets: " + MassExtinctions;
+			chanceOfMutation = document.getElementById("chance-mut").value;
+			if(chanceOfMutation==null) chanceOfMutation = 1;
 		}
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Regular Speed Interval////
 
