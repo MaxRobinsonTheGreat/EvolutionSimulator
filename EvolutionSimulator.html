@@ -3,12 +3,103 @@
 <head>
 	<meta charste="UTF-8">
 	<title>Evolution</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 	<style type='text/css'>
-		canvas { border: 1px solid black;}
+
+		body{
+			background: #121D29;
+			margin: 0;
+			padding: 0;
+		}
+
+		canvas {
+			display: block;
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+		}
+
+		.control-panel{
+			position: fixed;
+			right: 0;
+			bottom: 0;
+			width: auto;
+			height: auto;
+			background-color: lightgray;
+			outline: 5px solid darkgray;
+			opacity: 0.5;
+		}
+		.control-panel:hover {
+			opacity: 1.0;
+		}
+
+		p {
+			padding: 10px;
+			padding-top: 0px;
+			padding-bottom: 0px;
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-khtml-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			user-select: none;
+		}
+
+		#status-text {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			opacity: .7;
+			color: white;
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-khtml-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			user-select: none;
+		}
+
+		.fa {
+			position: fixed;
+			padding: 20px;
+			font-size: 30px;
+			width: 50px;
+			left: 0;
+			bottom: 0;
+			text-align: center;
+			text-decoration: none;
+			opacity: .5;
+		}
+		.fa:hover {
+			opacity: 0.7;
+		}
+			
 	</style>
 </head>
 <body>
 		<canvas id='canvas'></canvas>
+
+		<h1 id="status-text"><i>Running Headlessly</i></h1>
+
+		<div class = "control-panel">
+			<p id="iters">Iterations</p>
+			<p id="org-count">Organisms</p>
+			<p id="org-record">Highest Number of Organisms</p>
+			<p id="resets">Resets</p>
+			<button onclick="SetInterval('Pause')">Pause</button>
+			<button onclick="SetInterval('Regular')">Play</button>
+			<button onclick="SetInterval('Fast')">Run Headlessly</button>
+			<button onclick="reset()">Reset</button>
+			<br>
+			Mutation Rate: 
+			<input id="chance-mut" type="number" min="0" max="100" step="1" value="1"/>
+		</div>
+
+		<a href="https://github.com/MaxRobinsonTheGreat/EvolutionSimulator" class="fa fa-github"></a>
+		
 		<script type='text/javascript'>
 		
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Interval Control\\\\
@@ -20,19 +111,14 @@
 		var FPS;
 		
 		canvas.width = window.innerWidth;
-		canvas.height = window.innerHeight;
+  		canvas.height = window.innerHeight;
 		
 		var CanvasH = canvas.height;
 		var CanvasW = canvas.width;
 		var FIRSTFRAME = true;
 		
-		var KEY_UP = 38;
-		var KEY_DOWN = 40;
 		var KEY_SPACE = 32;
-		var Up_Pressed = false;
-		var Down_Pressed = false;
 		var Space_Pressed = false;
-		
 		
 		var grid = [];
 		var Cell_Side_Size = 3;
@@ -41,7 +127,7 @@
 		
 		
 		var organism = [];
-		var CommonLifeSpan = 300;
+		// var CommonLifeSpan = 300;
 		var BirthDistance = 7;
 		
 		//DIRECTION ENUM
@@ -50,6 +136,8 @@
 		var left = 2;
 		var right = 3;
 		//^^^^
+
+		var empty_color = "#121D29";
 		
 		//CELL TYPES ENUM
 		var mouth = 0;
@@ -59,6 +147,7 @@
 		var armour = 4;
 		var food = 5;
 		var empty = 6;
+		var cell_colors = ["orange", "pink", "blue", "red", "purple", "green", empty_color];
 		var AllCellTypes_length = 5;
 		var start_cell = empty;
 		//^^^^
@@ -84,6 +173,10 @@
 			ctx = document.getElementById('canvas').getContext("2d");
 			document.addEventListener('keydown', handleKeyDown);
 			document.addEventListener('keyup', handleKeyUp);
+
+			ctx.fillStyle = empty_color;
+			ctx.fillRect(0, 0, CanvasH, CanvasW);
+
 			SetGrid();
 			OriginOfLife();
 			
@@ -103,15 +196,18 @@
 				FPS = 40;
 				drawFullGrid();
 				curInterval = setInterval(function(){Update(); Draw(ctx);}, 1000/FPS);
+				document.getElementById("status-text").innerHTML = "";
 			}
 			else if(newInterval == "Fast"){		//runs the simulation and prints a very simple output at the fastest possible rate
 				FPS = 1000;FIRSTFRAME = true;
 				//drawFullGrid();
 				curInterval = setInterval(function(){Update(); DrawFast(ctx);}, 1000/FPS);
+				document.getElementById("status-text").innerHTML = "Running Headlessly";
 			}
 			else if(newInterval == "Pause"){	//prints full game but only updates to look for user input
 				drawFullGrid();
-				curInterval = setInterval(function(){LookForIntervalChange(); Draw(ctx); drawControlPanel(ctx);}, 1000/FPS);
+				curInterval = setInterval(function(){LookForIntervalChange(); Draw(ctx);}, 1000/FPS);
+				document.getElementById("status-text").innerHTML = "Paused";
 			}
 			curIntervalName = newInterval;
 		}
@@ -120,18 +216,6 @@
 		//Checks for pressed keys and changes the interval accordingly
 		function LookForIntervalChange(){
 		
-			//go fast if 'up' is pressed
-			if(Up_Pressed && curIntervalName != "Fast"){
-				FIRSTFRAME = true;
-				SetInterval("Fast");
-			}
-				
-			//go regular speed if 'down' is pressed
-			else if(Down_Pressed && curIntervalName != "Regular"){
-				FIRSTFRAME = true;
-				SetInterval("Regular");
-			}
-			
 			//pause if 'space' is pressed
 			if(Space_Pressed && curIntervalName != "Pause"){
 				FIRSTFRAME = true;
@@ -146,17 +230,11 @@
 				
 			//reset all the key-pressed variables to false
 			Space_Pressed = false;
-			Down_Pressed = false;
-			Up_Pressed = false;
 		}
 		
 		
 		//handles user input
 		function handleKeyDown(evt) {
-			if ( evt.keyCode == KEY_UP && !Up_Pressed )
-				Up_Pressed = true;
-			if( evt.keyCode == KEY_DOWN && !Down_Pressed )
-				Down_Pressed = true;
 			if( evt.keyCode == KEY_SPACE && !Space_Pressed )	
 				Space_Pressed = true;
 				
@@ -164,10 +242,6 @@
 				evt.preventDefault();
 		}
 		function handleKeyUp(evt){
-			if ( evt.keyCode == KEY_UP )
-				Up_Pressed = false;
-			if( evt.keyCode == KEY_DOWN )
-				Down_Pressed = false;
 			if( evt.keyCode == KEY_SPACE )	
 				Space_Pressed = false;
 			
@@ -201,8 +275,7 @@
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Origin of Life\\\\
 		function OriginOfLife(){
-			clearGrid();
-			drawFullGrid();
+			reset();
 			
 			
 			//one big honker with a little dude friend 
@@ -321,6 +394,12 @@
 			organism.push(c);
 			//*/
 			
+		}
+
+		function reset(){
+			organism = [];
+			clearGrid();
+			drawFullGrid();
 		}
 		
 		function clearGrid(){
@@ -793,20 +872,7 @@
 			var x = grid[r][c].x;
 			var y = grid[r][c].y;
 			var size = grid[r][c].size;
-			if(grid[r][c].type == empty)
-				ctx.fillStyle = "#121D29";
-			else if(grid[r][c].type == mouth)
-				ctx.fillStyle = "orange";
-			else if(grid[r][c].type == producer)
-				ctx.fillStyle = "pink";
-			else if(grid[r][c].type == food)
-				ctx.fillStyle = "green";
-			else if(grid[r][c].type == mover)
-				ctx.fillStyle = "blue";
-			else if(grid[r][c].type == killer)
-				ctx.fillStyle = "red";
-			else if(grid[r][c].type == armour)
-				ctx.fillStyle = "purple";
+			ctx.fillStyle = cell_colors[grid[r][c].type];
 			
 			ctx.fillRect(x, y, size, size);
 		}
@@ -835,6 +901,7 @@
 			updateOrganisms();
 			coutUp();
 			LookForIntervalChange();
+			UpdateControlPanel();
 		}
 		function Draw(){
 			if(FIRSTFRAME){
@@ -846,6 +913,14 @@
 			//drawControlPanel();
 
 			
+		}
+		function UpdateControlPanel(){
+			document.getElementById("iters").innerHTML = "Iterations: " + count;
+			document.getElementById("org-count").innerHTML = "Organisms: " + organism.length;
+			document.getElementById("org-record").innerHTML = "Organism Record: " + largestNumOfOrganisms;
+			document.getElementById("resets").innerHTML = "Resets: " + MassExtinctions;
+			chanceOfMutation = document.getElementById("chance-mut").value;
+			if(chanceOfMutation==null) chanceOfMutation = 1;
 		}
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Regular Speed Interval////
 
