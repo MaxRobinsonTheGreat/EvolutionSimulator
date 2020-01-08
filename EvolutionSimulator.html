@@ -28,15 +28,31 @@
 			height: auto;
 			background-color: lightgray;
 			outline: 5px solid darkgray;
-			opacity: 0.2;
+			opacity: 0.5;
 		}
 		.control-panel:hover {
 			opacity: 1.0;
 		}
-		p{
+
+		p {
 			padding: 10px;
 			padding-top: 0px;
 			padding-bottom: 0px;
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-khtml-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			user-select: none;
+		}
+
+		#status-text {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			opacity: .5;
+			color: white;
 			-webkit-touch-callout: none;
 			-webkit-user-select: none;
 			-khtml-user-select: none;
@@ -48,13 +64,18 @@
 </head>
 <body>
 		<canvas id='canvas'></canvas>
-		
+
+		<h1 id="status-text"><i>Running Headlessly</i></h1>
+
 		<div class = "control-panel">
 			<p>Iterations</p>
-			<p>Speed</p>
 			<p>Organisms</p>
 			<p>Highest Number of Organisms</p>
 			<p>Resets</p>
+			<button onclick="SetInterval('Pause')">Pause</button>
+			<button onclick="SetInterval('Regular')">Play</button>
+			<button onclick="SetInterval('Fast')">Run Headlessly</button>
+			<button onclick="reset()">Reset</button>
 		</div>
 		
 		<script type='text/javascript'>
@@ -74,13 +95,8 @@
 		var CanvasW = canvas.width;
 		var FIRSTFRAME = true;
 		
-		var KEY_UP = 38;
-		var KEY_DOWN = 40;
 		var KEY_SPACE = 32;
-		var Up_Pressed = false;
-		var Down_Pressed = false;
 		var Space_Pressed = false;
-		
 		
 		var grid = [];
 		var Cell_Side_Size = 3;
@@ -158,15 +174,18 @@
 				FPS = 40;
 				drawFullGrid();
 				curInterval = setInterval(function(){Update(); Draw(ctx);}, 1000/FPS);
+				document.getElementById("status-text").innerHTML = "";
 			}
 			else if(newInterval == "Fast"){		//runs the simulation and prints a very simple output at the fastest possible rate
 				FPS = 1000;FIRSTFRAME = true;
 				//drawFullGrid();
 				curInterval = setInterval(function(){Update(); DrawFast(ctx);}, 1000/FPS);
+				document.getElementById("status-text").innerHTML = "Running Headlessly";
 			}
 			else if(newInterval == "Pause"){	//prints full game but only updates to look for user input
 				drawFullGrid();
-				curInterval = setInterval(function(){LookForIntervalChange(); Draw(ctx); drawControlPanel(ctx);}, 1000/FPS);
+				curInterval = setInterval(function(){LookForIntervalChange(); Draw(ctx);}, 1000/FPS);
+				document.getElementById("status-text").innerHTML = "Paused";
 			}
 			curIntervalName = newInterval;
 		}
@@ -175,18 +194,6 @@
 		//Checks for pressed keys and changes the interval accordingly
 		function LookForIntervalChange(){
 		
-			//go fast if 'up' is pressed
-			if(Up_Pressed && curIntervalName != "Fast"){
-				FIRSTFRAME = true;
-				SetInterval("Fast");
-			}
-				
-			//go regular speed if 'down' is pressed
-			else if(Down_Pressed && curIntervalName != "Regular"){
-				FIRSTFRAME = true;
-				SetInterval("Regular");
-			}
-			
 			//pause if 'space' is pressed
 			if(Space_Pressed && curIntervalName != "Pause"){
 				FIRSTFRAME = true;
@@ -201,17 +208,11 @@
 				
 			//reset all the key-pressed variables to false
 			Space_Pressed = false;
-			Down_Pressed = false;
-			Up_Pressed = false;
 		}
 		
 		
 		//handles user input
 		function handleKeyDown(evt) {
-			if ( evt.keyCode == KEY_UP && !Up_Pressed )
-				Up_Pressed = true;
-			if( evt.keyCode == KEY_DOWN && !Down_Pressed )
-				Down_Pressed = true;
 			if( evt.keyCode == KEY_SPACE && !Space_Pressed )	
 				Space_Pressed = true;
 				
@@ -219,10 +220,6 @@
 				evt.preventDefault();
 		}
 		function handleKeyUp(evt){
-			if ( evt.keyCode == KEY_UP )
-				Up_Pressed = false;
-			if( evt.keyCode == KEY_DOWN )
-				Down_Pressed = false;
 			if( evt.keyCode == KEY_SPACE )	
 				Space_Pressed = false;
 			
@@ -256,8 +253,7 @@
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Origin of Life\\\\
 		function OriginOfLife(){
-			clearGrid();
-			drawFullGrid();
+			reset();
 			
 			
 			//one big honker with a little dude friend 
@@ -376,6 +372,12 @@
 			organism.push(c);
 			//*/
 			
+		}
+
+		function reset(){
+			organism = [];
+			clearGrid();
+			drawFullGrid();
 		}
 		
 		function clearGrid(){
