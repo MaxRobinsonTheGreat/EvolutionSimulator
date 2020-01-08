@@ -1,17 +1,15 @@
 # EVOLUTION SIMULATOR
 Designed and programmed by Max Robinson  
 
-[Watch Life Evolve](https://students.cs.byu.edu/~maximo5/EvolutionSimulation)
+[Watch Life Evolve](https://students.cs.byu.edu/~maximo5/EvolutionSimulator)
 
 ## What is this?
 This program is designed to simulate the natural processes of evolution and population growth/decline.
 It places "organisms" in an environment in which they are allowed to eat, survive, and reproduce. Over time, changes in their
-anatomy accumulate and allow certain organisms to thrive while others die out. There is no goal or fitness function to this system - as organisms adapt, their competitors must adapt as well. This gives rise to many interesting and unexpected consequences. You can run it by cloning this repo and opening the file, or by going [here](https://students.cs.byu.edu/~maximo5/EvolutionSimulation).
+anatomy accumulate and allow certain organisms to thrive while others die out. There is no goal or fitness function to this system - as organisms adapt, their competitors must adapt as well. This gives rise to many interesting and unexpected consequences. You can run it by cloning this repo and opening the file, or by going [here](https://students.cs.byu.edu/~maximo5/EvolutionSimulator).
 
-## Controls
-- Press ```space``` to pause the simulation and see stats
-- Press ```up``` arrow to run headlessly (boundless framerate and no visuals)
-- Press ```down``` arrow to go back to normal speed with visuals
+## Key Controls
+- Press ```space``` to pause the simulation
 
 ## Rules
 - The organisms live on a grid.
