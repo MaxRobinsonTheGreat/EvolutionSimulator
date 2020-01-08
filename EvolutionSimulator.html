@@ -4,11 +4,59 @@
 	<meta charste="UTF-8">
 	<title>Evolution</title>
 	<style type='text/css'>
-		canvas { border: 1px solid black;}
+
+		body{
+			background: #121D29;
+			margin: 0;
+			padding: 0;
+		}
+
+		canvas {
+			display: block;
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+		}
+
+		.control-panel{
+			position: fixed;
+			right: 0;
+			bottom: 0;
+			width: auto;
+			height: auto;
+			background-color: lightgray;
+			outline: 5px solid darkgray;
+			opacity: 0.2;
+		}
+		.control-panel:hover {
+			opacity: 1.0;
+		}
+		p{
+			padding: 10px;
+			padding-top: 0px;
+			padding-bottom: 0px;
+			-webkit-touch-callout: none;
+			-webkit-user-select: none;
+			-khtml-user-select: none;
+			-moz-user-select: none;
+			-ms-user-select: none;
+			user-select: none;
+		}
 	</style>
 </head>
 <body>
 		<canvas id='canvas'></canvas>
+		
+		<div class = "control-panel">
+			<p>Iterations</p>
+			<p>Speed</p>
+			<p>Organisms</p>
+			<p>Highest Number of Organisms</p>
+			<p>Resets</p>
+		</div>
+		
 		<script type='text/javascript'>
 		
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////Interval Control\\\\
@@ -20,7 +68,7 @@
 		var FPS;
 		
 		canvas.width = window.innerWidth;
-		canvas.height = window.innerHeight;
+  		canvas.height = window.innerHeight;
 		
 		var CanvasH = canvas.height;
 		var CanvasW = canvas.width;
@@ -41,7 +89,7 @@
 		
 		
 		var organism = [];
-		var CommonLifeSpan = 300;
+		// var CommonLifeSpan = 300;
 		var BirthDistance = 7;
 		
 		//DIRECTION ENUM
@@ -50,6 +98,8 @@
 		var left = 2;
 		var right = 3;
 		//^^^^
+
+		var empty_color = "#121D29";
 		
 		//CELL TYPES ENUM
 		var mouth = 0;
@@ -59,6 +109,7 @@
 		var armour = 4;
 		var food = 5;
 		var empty = 6;
+		var cell_colors = ["orange", "pink", "blue", "red", "purple", "green", "#121D29"];
 		var AllCellTypes_length = 5;
 		var start_cell = empty;
 		//^^^^
@@ -84,6 +135,10 @@
 			ctx = document.getElementById('canvas').getContext("2d");
 			document.addEventListener('keydown', handleKeyDown);
 			document.addEventListener('keyup', handleKeyUp);
+
+			ctx.fillStyle = empty_color;
+			ctx.fillRect(0, 0, CanvasH, CanvasW);
+
 			SetGrid();
 			OriginOfLife();
 			
@@ -793,20 +848,7 @@
 			var x = grid[r][c].x;
 			var y = grid[r][c].y;
 			var size = grid[r][c].size;
-			if(grid[r][c].type == empty)
-				ctx.fillStyle = "#121D29";
-			else if(grid[r][c].type == mouth)
-				ctx.fillStyle = "orange";
-			else if(grid[r][c].type == producer)
-				ctx.fillStyle = "pink";
-			else if(grid[r][c].type == food)
-				ctx.fillStyle = "green";
-			else if(grid[r][c].type == mover)
-				ctx.fillStyle = "blue";
-			else if(grid[r][c].type == killer)
-				ctx.fillStyle = "red";
-			else if(grid[r][c].type == armour)
-				ctx.fillStyle = "purple";
+			ctx.fillStyle = cell_colors[grid[r][c].type];
 			
 			ctx.fillRect(x, y, size, size);
 		}
