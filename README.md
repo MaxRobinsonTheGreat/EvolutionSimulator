@@ -1,5 +1,5 @@
 
-#NOTE
+# NOTE
 This is the readme for the original evolution simulator, not the [Life Engine](https://thelifeengine.net). Go [here](https://github.com/MaxRobinsonTheGreat/EvolutionSimulator/blob/master/V2README.md) for the updated readme.
 
 
